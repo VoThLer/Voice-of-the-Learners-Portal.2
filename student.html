@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Portal - Voice of the Learners</title>
+<style>
+  :root{ --maroon:#6E2C3A; --maroon-light:#8C4B5A; --bg:#F8F3F2; }
+  *{box-sizing:border-box;}
+  body{background:var(--bg);padding:24px;font-family:"Segoe UI",Arial,sans-serif;margin:0;}
+  .page{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:18px;}
+  .top-card{background:linear-gradient(180deg,var(--maroon),var(--maroon-light));color:white;
+            padding:22px;border-radius:22px;}
+  .profile{display:flex;align-items:center;gap:15px;}
+  .avatar{flex-shrink:0;width:60px;height:60px;border-radius:50%;background:#F5E8EA;color:var(--maroon);
+          display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:bold;}
+  .profile h2{margin:0 0 4px;font-size:20px;}
+  .profile p{margin:2px 0;font-size:13px;opacity:.9;}
+  .card{background:white;padding:18px;border-radius:18px;box-shadow:0 6px 15px rgba(0,0,0,.08);}
+  .card h3{color:var(--maroon);margin:0 0 12px;}
+  label{display:block;margin-top:10px;font-size:13px;font-weight:bold;color:var(--maroon);}
+  input,select,textarea{width:100%;padding:12px;margin-top:6px;border-radius:12px;border:1px solid #DDD;
+                         font-family:inherit;font-size:14px;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--maroon-light);outline-offset:1px;}
+  input[readonly]{background:#F5F5F5;color:#666;}
+  textarea{height:120px;resize:vertical;}
+  .submit{width:100%;padding:14px;background:var(--maroon);color:white;border:none;border-radius:12px;
+          font-weight:bold;margin-top:20px;cursor:pointer;font-size:14px;}
+  .submit:hover{background:var(--maroon-light);}
+  .submit:disabled{background:#BBB;cursor:not-allowed;}
+  .delete-btn{width:100%;padding:10px;background:white;color:#B3261E;border:1px solid #B3261E;
+              border-radius:10px;font-weight:bold;margin-top:10px;cursor:pointer;font-size:13px;}
+  .delete-btn:hover{background:#FDEDEB;}
+  .error{color:#B3261E;font-size:12px;margin-top:4px;display:none;}
+  .status{padding:10px;border-radius:10px;display:inline-block;font-weight:bold;margin-bottom:10px;}
+  .pending{background:#FFF4CC;color:#8A6700;}
+  .ongoing{background:#E8F0FE;color:#2856A3;}
+  .resolved{background:#E8F7EC;color:#146B34;}
+  .feedback{background:#FDF0F3;border-left:4px solid var(--maroon-light);padding:12px;
+            border-radius:10px;margin-top:10px;}
+  .logout{background:var(--maroon-light);}
+  .concern-item{border:1px solid #EEE;border-radius:14px;padding:14px;margin-bottom:14px;}
+  .concern-item:last-child{margin-bottom:0;}
+  .loading{color:#888;font-size:14px;}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="top-card">
+    <div class="profile">
+      <div class="avatar" id="avatarLetter">?</div>
+      <div>
+        <h2 id="profileName">Loading...</h2>
+        <p id="profileId"></p>
+        <p id="profileGrade"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📄 File a Concern</h3>
+    <form id="concernForm" novalidate>
+      <label for="term">Term</label>
+      <select id="term" required>
+        <option value="" disabled selected>Select term</option>
+        <option value="1">Term 1</option>
+        <option value="2">Term 2</option>
+        <option value="3">Term 3</option>
+      </select>
+      <div class="error" id="termError">Please select a term.</div>
+
+      <label for="category">Type of Complaint</label>
+      <select id="category" required>
+        <option value="" disabled selected>Select a category</option>
+        <option value="Facilities">Facilities</option>
+        <option value="Bullying & Safety">Bullying &amp; Safety</option>
+        <option value="Teacher-Related">Teacher-Related</option>
+        <option value="Other">Other</option>
+      </select>
+      <div class="error" id="categoryError">Please select a category.</div>
+
+      <label for="concern">Write your concern</label>
+      <textarea id="concern" placeholder="Write your concern here..." required></textarea>
+      <div class="error" id="concernError">Please describe your concern.</div>
+
+      <button type="submit" class="submit" id="submitBtn">SUBMIT CONCERN</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>📬 My Concern Status</h3>
+    <div id="concernList"><p class="loading">Loading...</p></div>
+  </div>
+
+  <button class="submit logout" onclick="logout()">LOG OUT</button>
+</div>
+
+<script type="module">
+  import { auth, db } from "./firebase-config.js";
+  import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    doc, getDoc, collection, addDoc, query, where, onSnapshot,
+    deleteDoc, serverTimestamp, orderBy
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  let currentUser = null;
+  let profile = null;
+
+  function escapeHTML(str){
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+
+  onAuthStateChanged(auth, async (user) => {
+    if(!user){
+      window.location.href = "index.html";
+      return;
+    }
+    currentUser = user;
+
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    if(!profileSnap.exists() || profileSnap.data().role !== "student"){
+      window.location.href = "index.html";
+      return;
+    }
+    profile = profileSnap.data();
+
+    document.getElementById("profileName").textContent = profile.name;
+    document.getElementById("profileId").textContent = "Student ID: " + profile.studentId;
+    document.getElementById("profileGrade").textContent = profile.grade || "";
+    document.getElementById("avatarLetter").textContent = profile.name ? profile.name.charAt(0).toUpperCase() : "?";
+
+    listenForConcerns(user.uid);
+  });
+
+  window.logout = function(){
+    signOut(auth).then(() => window.location.href = "index.html");
+  };
+
+  const form = document.getElementById("concernForm");
+  const termEl = document.getElementById("term");
+  const categoryEl = document.getElementById("category");
+  const concernEl = document.getElementById("concern");
+  const submitBtn = document.getElementById("submitBtn");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    let valid = true;
+    document.getElementById("termError").style.display = "none";
+    document.getElementById("categoryError").style.display = "none";
+    document.getElementById("concernError").style.display = "none";
+
+    if(!termEl.value){ document.getElementById("termError").style.display = "block"; valid = false; }
+    if(!categoryEl.value){ document.getElementById("categoryError").style.display = "block"; valid = false; }
+    if(!concernEl.value.trim()){ document.getElementById("concernError").style.display = "block"; valid = false; }
+    if(!valid) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "SUBMITTING...";
+
+    try{
+      await addDoc(collection(db, "concerns"), {
+        studentUid: currentUser.uid,
+        name: profile.name,
+        studentId: profile.studentId,
+        grade: profile.grade || "",
+        term: termEl.value,
+        category: categoryEl.value,
+        concern: concernEl.value.trim(),
+        status: "Pending",
+        feedback: "",
+        submittedAt: serverTimestamp()
+      });
+      form.reset();
+    }catch(err){
+      alert("Something went wrong submitting your concern. Please try again.");
+    }finally{
+      submitBtn.disabled = false;
+      submitBtn.textContent = "SUBMIT CONCERN";
+    }
+  });
+
+  function listenForConcerns(uid){
+    const q = query(
+      collection(db, "concerns"),
+      where("studentUid", "==", uid),
+      orderBy("submittedAt", "desc")
+    );
+
+    onSnapshot(q, (snapshot) => {
+      const container = document.getElementById("concernList");
+      container.innerHTML = "";
+
+      if(snapshot.empty){
+        container.innerHTML = "<p>No concerns submitted yet.</p>";
+        return;
+      }
+
+      snapshot.forEach((docSnap) => {
+        const concern = docSnap.data();
+        const id = docSnap.id;
+
+        let color = "pending";
+        if(concern.status === "Ongoing") color = "ongoing";
+        if(concern.status === "Resolved") color = "resolved";
+        const statusLabel = concern.status === "Resolved" ? "Issue Resolved" : (concern.status || "Pending");
+        const submitted = concern.submittedAt && concern.submittedAt.toDate
+          ? concern.submittedAt.toDate().toLocaleString() : "Just now";
+
+        const item = document.createElement("div");
+        item.className = "concern-item";
+        item.innerHTML = `
+          <div class="status ${color}">${escapeHTML(statusLabel)}</div>
+          <p><b>Category:</b> ${escapeHTML(concern.category)}</p>
+          <p style="font-size:12px;color:#888;">${escapeHTML(submitted)}</p>
+          <p><b>Concern:</b></p>
+          <p>${escapeHTML(concern.concern)}</p>
+          <div class="feedback">
+            <b>Principal Feedback</b><br><br>
+            ${concern.feedback ? escapeHTML(concern.feedback) : "No feedback yet."}
+          </div>
+          <button class="delete-btn" data-id="${id}">DELETE THIS CONCERN</button>
+        `;
+        container.appendChild(item);
+      });
+
+      document.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const confirmed = confirm("Delete this concern? This cannot be undone.");
+          if(!confirmed) return;
+          await deleteDoc(doc(db, "concerns", btn.getAttribute("data-id")));
+        });
+      });
+    });
+  }
+</script>
+</body>
+</html>

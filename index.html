@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice of the Learners Portal</title>
+<style>
+  :root{ --maroon:#6E2C3A; --maroon-light:#8C4B5A; --bg:#F8F3F2; }
+  *{box-sizing:border-box;}
+  body{background:var(--bg);font-family:"Segoe UI",Arial,sans-serif;margin:0;
+       display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+  .login-container{background:white;max-width:400px;width:100%;border-radius:26px;overflow:hidden;
+                    box-shadow:0 10px 30px rgba(0,0,0,.1);}
+  .portal-header{background:linear-gradient(180deg,var(--maroon),var(--maroon-light));
+                  color:white;padding:30px 24px;text-align:center;}
+  .logo-circle{width:70px;height:70px;border-radius:50%;background:#F5E8EA;color:var(--maroon);
+               display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:bold;
+               margin:0 auto 14px;}
+  .portal-header h1{margin:0 0 6px;font-size:19px;letter-spacing:.5px;}
+  .portal-header p{margin:0;font-size:13px;opacity:.9;}
+  .portal-body{padding:24px;}
+  .switch{display:flex;background:#F5E8EA;border-radius:14px;padding:4px;margin-bottom:20px;}
+  .switch button{flex:1;padding:10px;border:none;border-radius:10px;background:transparent;
+                  color:var(--maroon);font-weight:bold;cursor:pointer;font-size:14px;}
+  .switch button.active{background:var(--maroon);color:white;}
+  label{display:block;margin-top:12px;font-size:13px;font-weight:bold;color:var(--maroon);}
+  input{width:100%;padding:12px;margin-top:6px;border-radius:12px;border:1px solid #DDD;font-size:14px;}
+  input:focus{outline:2px solid var(--maroon-light);outline-offset:1px;}
+  .login-btn{width:100%;padding:14px;background:var(--maroon);color:white;border:none;
+             border-radius:12px;font-weight:bold;margin-top:20px;cursor:pointer;font-size:14px;}
+  .login-btn:hover{background:var(--maroon-light);}
+  .login-btn:disabled{background:#BBB;cursor:not-allowed;}
+  .copyright{text-align:center;font-size:12px;color:#999;margin-top:16px;}
+  .error-msg{color:#B3261E;font-size:13px;margin-top:10px;display:none;}
+</style>
+</head>
+<body>
+<div class="login-container">
+  <div class="portal-header">
+    <div class="logo-circle">VL</div>
+    <h1>VOICE OF THE LEARNERS</h1>
+    <p>Student Concern Management Portal</p>
+  </div>
+  <div class="portal-body">
+    <div class="switch">
+      <button id="studentBtn" class="active" onclick="setRole('student')">Student</button>
+      <button id="adminBtn" onclick="setRole('admin')">Admin</button>
+    </div>
+
+    <div id="studentForm">
+      <label for="studentId">Student ID Number</label>
+      <input id="studentId" type="text" placeholder="e.g. 2026-0001">
+      <label for="studentPass">Password</label>
+      <input id="studentPass" type="password" placeholder="Enter password">
+    </div>
+
+    <div id="adminForm" style="display:none;">
+      <label for="adminUser">Username</label>
+      <input id="adminUser" type="text" placeholder="Enter username">
+      <label for="adminPass">Password</label>
+      <input id="adminPass" type="password" placeholder="Enter password">
+    </div>
+
+    <button class="login-btn" id="loginBtn" onclick="handleLogin()">LOG IN</button>
+    <div class="error-msg" id="errorMsg"></div>
+    <p class="copyright">Voice of the Learners &copy; 2026</p>
+  </div>
+</div>
+
+<script type="module">
+  import { auth, db, studentIdToEmail, usernameToEmail } from "./firebase-config.js";
+  import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  let role = "student";
+
+  window.setRole = function(r){
+    role = r;
+    document.getElementById("studentForm").style.display = r==="student" ? "block" : "none";
+    document.getElementById("adminForm").style.display = r==="admin" ? "block" : "none";
+    document.getElementById("studentBtn").classList.toggle("active", r==="student");
+    document.getElementById("adminBtn").classList.toggle("active", r==="admin");
+    document.getElementById("errorMsg").style.display = "none";
+  };
+
+  window.handleLogin = async function(){
+    const errorMsg = document.getElementById("errorMsg");
+    const loginBtn = document.getElementById("loginBtn");
+    errorMsg.style.display = "none";
+
+    let email, password;
+    if(role === "student"){
+      const studentId = document.getElementById("studentId").value.trim();
+      password = document.getElementById("studentPass").value;
+      if(!studentId || !password){
+        errorMsg.textContent = "Please enter your Student ID and password.";
+        errorMsg.style.display = "block";
+        return;
+      }
+      email = studentIdToEmail(studentId);
+    }else{
+      const username = document.getElementById("adminUser").value.trim();
+      password = document.getElementById("adminPass").value;
+      if(!username || !password){
+        errorMsg.textContent = "Please enter a username and password.";
+        errorMsg.style.display = "block";
+        return;
+      }
+      email = usernameToEmail(username);
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = "LOGGING IN...";
+
+    try{
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const profileSnap = await getDoc(doc(db, "users", cred.user.uid));
+
+      if(!profileSnap.exists()){
+        errorMsg.textContent = "Account found but no profile exists. Contact admin.";
+        errorMsg.style.display = "block";
+        loginBtn.disabled = false;
+        loginBtn.textContent = "LOG IN";
+        return;
+      }
+
+      const profile = profileSnap.data();
+
+      if(role === "admin" && profile.role !== "admin"){
+        errorMsg.textContent = "This account is not an admin account.";
+        errorMsg.style.display = "block";
+        loginBtn.disabled = false;
+        loginBtn.textContent = "LOG IN";
+        return;
+      }
+      if(role === "student" && profile.role !== "student"){
+        errorMsg.textContent = "This account is not a student account.";
+        errorMsg.style.display = "block";
+        loginBtn.disabled = false;
+        loginBtn.textContent = "LOG IN";
+        return;
+      }
+
+      window.location.href = role === "admin" ? "admin.html" : "student.html";
+
+    }catch(err){
+      errorMsg.textContent = "Invalid login. Please check your ID/username and password.";
+      errorMsg.style.display = "block";
+      loginBtn.disabled = false;
+      loginBtn.textContent = "LOG IN";
+    }
+  };
+</script>
+</body>
+</html>

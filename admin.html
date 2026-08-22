@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard - Voice of the Learners</title>
+<style>
+  :root{ --maroon:#6E2C3A; --maroon-light:#8C4B5A; --bg:#F8F3F2; }
+  *{box-sizing:border-box;}
+  body{background:var(--bg);padding:24px;font-family:"Segoe UI",Arial,sans-serif;margin:0;}
+  .page{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:18px;}
+  .top-card{background:linear-gradient(180deg,var(--maroon),var(--maroon-light));color:white;
+            padding:22px;border-radius:22px;display:flex;align-items:center;justify-content:space-between;gap:15px;}
+  .top-card h2{margin:0 0 4px;font-size:20px;}
+  .top-card p{margin:0;font-size:13px;opacity:.9;}
+  .logout-btn{background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.5);
+              padding:10px 16px;border-radius:10px;font-weight:bold;cursor:pointer;flex-shrink:0;}
+  .logout-btn:hover{background:rgba(255,255,255,.25);}
+  .summary{display:flex;gap:12px;}
+  .summary .card{flex:1;text-align:center;padding:14px;}
+  .summary .num{font-size:26px;font-weight:bold;color:var(--maroon);}
+  .summary .lbl{font-size:12px;color:#777;margin-top:2px;}
+  .card{background:white;padding:18px;border-radius:18px;box-shadow:0 6px 15px rgba(0,0,0,.08);}
+  .card h3{color:var(--maroon);margin:0 0 12px;}
+  .tabs{display:flex;background:#F5E8EA;border-radius:14px;padding:4px;}
+  .tabs button{flex:1;padding:10px;border:none;border-radius:10px;background:transparent;
+               color:var(--maroon);font-weight:bold;cursor:pointer;font-size:14px;}
+  .tabs button.active{background:var(--maroon);color:white;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .concern-card{border:1px solid #EEE;border-radius:14px;padding:16px;margin-bottom:14px;}
+  .concern-card:last-child{margin-bottom:0;}
+  .concern-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;}
+  .concern-head h4{margin:0 0 2px;color:var(--maroon);}
+  .concern-head p{margin:0;font-size:12px;color:#888;}
+  .status{padding:6px 10px;border-radius:8px;display:inline-block;font-weight:bold;font-size:12px;white-space:nowrap;}
+  .pending{background:#FFF4CC;color:#8A6700;}
+  .ongoing{background:#E8F0FE;color:#2856A3;}
+  .resolved{background:#E8F7EC;color:#146B34;}
+  .concern-text{background:#FAFAFA;border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:10px;}
+  label{display:block;margin-top:10px;font-size:12px;font-weight:bold;color:var(--maroon);}
+  select,textarea,input{width:100%;padding:10px;margin-top:6px;border-radius:10px;border:1px solid #DDD;
+                         font-family:inherit;font-size:13px;box-sizing:border-box;}
+  textarea{height:80px;resize:vertical;}
+  .save-btn{margin-top:12px;padding:10px 16px;background:var(--maroon);color:white;border:none;
+            border-radius:10px;font-weight:bold;cursor:pointer;font-size:13px;}
+  .save-btn:hover{background:var(--maroon-light);}
+  .delete-btn{margin-top:12px;margin-left:8px;padding:10px 16px;background:white;color:#B3261E;
+              border:1px solid #B3261E;border-radius:10px;font-weight:bold;cursor:pointer;font-size:13px;}
+  .delete-btn:hover{background:#FDEDEB;}
+  .saved-msg{font-size:12px;color:#146B34;margin-left:10px;display:none;}
+  .empty{color:#888;font-size:14px;}
+  .student-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;
+               border-bottom:1px solid #F0F0F0;font-size:14px;}
+  .student-row:last-child{border-bottom:none;}
+  .success-msg{color:#146B34;font-size:13px;margin-top:10px;display:none;}
+  .error-msg{color:#B3261E;font-size:13px;margin-top:10px;display:none;}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="top-card">
+    <div>
+      <h2>Principal Dashboard</h2>
+      <p>Voice of the Learners &bull; Admin</p>
+    </div>
+    <button class="logout-btn" onclick="logout()">LOG OUT</button>
+  </div>
+
+  <div class="summary">
+    <div class="card"><div class="num" id="countPending">0</div><div class="lbl">Pending</div></div>
+    <div class="card"><div class="num" id="countOngoing">0</div><div class="lbl">Ongoing</div></div>
+    <div class="card"><div class="num" id="countResolved">0</div><div class="lbl">Issue Resolved</div></div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <button id="concernsTabBtn" class="active" onclick="switchTab('concerns')">Concerns</button>
+      <button id="studentsTabBtn" onclick="switchTab('students')">Manage Students</button>
+    </div>
+  </div>
+
+  <div id="concernsTab" class="tab-panel active">
+    <div class="card">
+      <h3>📋 Submitted Concerns</h3>
+      <div id="concernList"><p class="empty">Loading...</p></div>
+    </div>
+  </div>
+
+  <div id="studentsTab" class="tab-panel">
+    <div class="card">
+      <h3>➕ Add Student Account</h3>
+      <form id="addStudentForm">
+        <label for="newName">Full Name</label>
+        <input id="newName" type="text" placeholder="e.g. Juan Dela Cruz" required>
+
+        <label for="newStudentId">Student ID</label>
+        <input id="newStudentId" type="text" placeholder="e.g. 2026-0001" required>
+
+        <label for="newGrade">Grade Level / Section</label>
+        <input id="newGrade" type="text" placeholder="e.g. Grade 11" required>
+
+        <label for="newPassword">Temporary Password</label>
+        <input id="newPassword" type="text" placeholder="Give this to the student" required minlength="6">
+
+        <button type="submit" class="save-btn" style="width:100%;margin-top:16px;">Create Account</button>
+        <div class="success-msg" id="addSuccess"></div>
+        <div class="error-msg" id="addError"></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>👥 Existing Students</h3>
+      <div id="studentList"><p class="empty">Loading...</p></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { auth, db, firebaseConfig, studentIdToEmail } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signOut as secondarySignOut
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    doc, getDoc, setDoc, collection, query, where, onSnapshot,
+    updateDoc, deleteDoc, orderBy, getDocs
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  function escapeHTML(str){
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+
+  onAuthStateChanged(auth, async (user) => {
+    if(!user){
+      window.location.href = "index.html";
+      return;
+    }
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    if(!profileSnap.exists() || profileSnap.data().role !== "admin"){
+      window.location.href = "index.html";
+      return;
+    }
+    listenForConcerns();
+    listenForStudents();
+  });
+
+  window.logout = function(){
+    signOut(auth).then(() => window.location.href = "index.html");
+  };
+
+  window.switchTab = function(tab){
+    document.getElementById("concernsTab").classList.toggle("active", tab==="concerns");
+    document.getElementById("studentsTab").classList.toggle("active", tab==="students");
+    document.getElementById("concernsTabBtn").classList.toggle("active", tab==="concerns");
+    document.getElementById("studentsTabBtn").classList.toggle("active", tab==="students");
+  };
+
+  // ---------- CONCERNS ----------
+  function listenForConcerns(){
+    const q = query(collection(db, "concerns"), orderBy("submittedAt", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+      const list = document.getElementById("concernList");
+      list.innerHTML = "";
+
+      const counts = { Pending:0, Ongoing:0, Resolved:0 };
+      snapshot.forEach(d => { const s = d.data().status; counts[s] = (counts[s]||0) + 1; });
+      document.getElementById("countPending").textContent = counts.Pending || 0;
+      document.getElementById("countOngoing").textContent = counts.Ongoing || 0;
+      document.getElementById("countResolved").textContent = counts.Resolved || 0;
+
+      if(snapshot.empty){
+        list.innerHTML = '<p class="empty">No concerns submitted yet.</p>';
+        return;
+      }
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const id = docSnap.id;
+        const statusClass = data.status === "Ongoing" ? "ongoing" : data.status === "Resolved" ? "resolved" : "pending";
+        const statusLabel = data.status === "Resolved" ? "Issue Resolved" : (data.status || "Pending");
+        const submitted = data.submittedAt && data.submittedAt.toDate
+          ? data.submittedAt.toDate().toLocaleString() : "Just now";
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "concern-card";
+        wrapper.innerHTML = `
+          <div class="concern-head">
+            <div>
+              <h4>${escapeHTML(data.name)} <span style="font-weight:normal;color:#999;">(${escapeHTML(data.studentId||"")})</span></h4>
+              <p>${escapeHTML(data.grade||"")} &bull; Term ${escapeHTML(data.term||"")} &bull; ${escapeHTML(data.category||"")} &bull; ${escapeHTML(submitted)}</p>
+            </div>
+            <span class="status ${statusClass}">${escapeHTML(statusLabel)}</span>
+          </div>
+          <div class="concern-text">${escapeHTML(data.concern)}</div>
+
+          <label>Update Status</label>
+          <select data-id="${id}" class="statusSelect">
+            <option value="Pending" ${data.status==="Pending"?"selected":""}>Pending</option>
+            <option value="Ongoing" ${data.status==="Ongoing"?"selected":""}>Ongoing</option>
+            <option value="Resolved" ${data.status==="Resolved"?"selected":""}>Issue Resolved</option>
+          </select>
+
+          <label>Reply / Feedback</label>
+          <textarea data-id="${id}" class="feedbackInput" placeholder="Write feedback for the student...">${escapeHTML(data.feedback||"")}</textarea>
+
+          <button class="save-btn" data-id="${id}">Save Reply</button>
+          <button class="delete-btn" data-id="${id}">Delete</button>
+          <span class="saved-msg" data-id="${id}">Saved ✓</span>
+        `;
+        list.appendChild(wrapper);
+      });
+
+      document.querySelectorAll(".save-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          const statusSelect = document.querySelector(`.statusSelect[data-id="${id}"]`);
+          const feedbackInput = document.querySelector(`.feedbackInput[data-id="${id}"]`);
+
+          await updateDoc(doc(db, "concerns", id), {
+            status: statusSelect.value,
+            feedback: feedbackInput.value.trim()
+          });
+
+          const savedMsg = document.querySelector(`.saved-msg[data-id="${id}"]`);
+          savedMsg.style.display = "inline";
+          setTimeout(() => { savedMsg.style.display = "none"; }, 1500);
+        });
+      });
+
+      document.querySelectorAll(".feedbackInput").forEach(box => {
+        box.addEventListener("input", () => {
+          const id = box.getAttribute("data-id");
+          const statusSelect = document.querySelector(`.statusSelect[data-id="${id}"]`);
+          if(box.value.trim() !== "" && statusSelect.value === "Pending"){
+            statusSelect.value = "Ongoing";
+          }
+        });
+      });
+
+      document.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const confirmed = confirm("Delete this concern? This cannot be undone.");
+          if(!confirmed) return;
+          await deleteDoc(doc(db, "concerns", btn.getAttribute("data-id")));
+        });
+      });
+    });
+  }
+
+  // ---------- STUDENT MANAGEMENT ----------
+  function listenForStudents(){
+    const q = query(collection(db, "users"), where("role", "==", "student"));
+    onSnapshot(q, (snapshot) => {
+      const list = document.getElementById("studentList");
+      list.innerHTML = "";
+      if(snapshot.empty){
+        list.innerHTML = '<p class="empty">No student accounts yet.</p>';
+        return;
+      }
+      snapshot.forEach((docSnap) => {
+        const s = docSnap.data();
+        const row = document.createElement("div");
+        row.className = "student-row";
+        row.innerHTML = `<span>${escapeHTML(s.name)} &mdash; ${escapeHTML(s.studentId)}</span><span style="color:#888;">${escapeHTML(s.grade||"")}</span>`;
+        list.appendChild(row);
+      });
+    });
+  }
+
+  document.getElementById("addStudentForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const addSuccess = document.getElementById("addSuccess");
+    const addError = document.getElementById("addError");
+    addSuccess.style.display = "none";
+    addError.style.display = "none";
+
+    const name = document.getElementById("newName").value.trim();
+    const studentId = document.getElementById("newStudentId").value.trim();
+    const grade = document.getElementById("newGrade").value.trim();
+    const password = document.getElementById("newPassword").value;
+
+    if(!name || !studentId || !grade || password.length < 6){
+      addError.textContent = "Please fill every field (password needs at least 6 characters).";
+      addError.style.display = "block";
+      return;
+    }
+
+    // A second, isolated Firebase app instance so creating this account
+    // doesn't sign the admin out of their own session.
+    const secondaryApp = initializeApp(firebaseConfig, "secondary-" + Date.now());
+    const secondaryAuth = getAuth(secondaryApp);
+
+    try{
+      const email = studentIdToEmail(studentId);
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+
+      await setDoc(doc(db, "users", cred.user.uid), {
+        role: "student",
+        name,
+        studentId,
+        grade
+      });
+
+      await secondarySignOut(secondaryAuth);
+
+      addSuccess.textContent = `Account created for ${name} (${studentId}).`;
+      addSuccess.style.display = "block";
+      document.getElementById("addStudentForm").reset();
+
+    }catch(err){
+      addError.textContent = err.code === "auth/email-already-in-use"
+        ? "That Student ID already has an account."
+        : "Something went wrong creating this account.";
+      addError.style.display = "block";
+    }
+  });
+</script>
+</body>
+</html>
