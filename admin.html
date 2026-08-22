@@ -51,8 +51,12 @@
   .saved-msg{font-size:12px;color:#146B34;margin-left:10px;display:none;}
   .empty{color:#888;font-size:14px;}
   .student-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;
-               border-bottom:1px solid #F0F0F0;font-size:14px;}
+               border-bottom:1px solid #F0F0F0;font-size:14px;gap:10px;}
   .student-row:last-child{border-bottom:none;}
+  .student-info{flex:1;}
+  .student-delete-btn{padding:6px 12px;background:white;color:#B3261E;border:1px solid #B3261E;
+                       border-radius:8px;font-weight:bold;cursor:pointer;font-size:12px;flex-shrink:0;}
+  .student-delete-btn:hover{background:#FDEDEB;}
   .success-msg{color:#146B34;font-size:13px;margin-top:10px;display:none;}
   .error-msg{color:#B3261E;font-size:13px;margin-top:10px;display:none;}
 </style>
@@ -112,6 +116,11 @@
 
     <div class="card">
       <h3>👥 Existing Students</h3>
+      <p style="font-size:12px;color:#888;margin:-4px 0 12px;">
+        Deleting here removes their profile and login access immediately.
+        To fully remove the account record, also delete it in
+        Firebase Console &rarr; Authentication &rarr; Users.
+      </p>
       <div id="studentList"><p class="empty">Loading...</p></div>
     </div>
   </div>
@@ -264,10 +273,27 @@
       }
       snapshot.forEach((docSnap) => {
         const s = docSnap.data();
+        const uid = docSnap.id;
         const row = document.createElement("div");
         row.className = "student-row";
-        row.innerHTML = `<span>${escapeHTML(s.name)} &mdash; ${escapeHTML(s.studentId)}</span><span style="color:#888;">${escapeHTML(s.grade||"")}</span>`;
+        row.innerHTML = `
+          <span class="student-info">${escapeHTML(s.name)} &mdash; ${escapeHTML(s.studentId)} <span style="color:#888;">(${escapeHTML(s.grade||"")})</span></span>
+          <button class="student-delete-btn" data-uid="${uid}" data-name="${escapeHTML(s.name)}">Delete</button>
+        `;
         list.appendChild(row);
+      });
+
+      document.querySelectorAll(".student-delete-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const uid = btn.getAttribute("data-uid");
+          const name = btn.getAttribute("data-name");
+          const confirmed = confirm(
+            `Delete ${name}'s account?\n\nThis removes their login and profile. Their submitted concerns stay in the Concerns tab unless you delete those separately.`
+          );
+          if(!confirmed) return;
+
+          await deleteDoc(doc(db, "users", uid));
+        });
       });
     });
   }
