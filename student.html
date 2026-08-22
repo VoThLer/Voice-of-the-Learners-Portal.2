@@ -101,7 +101,7 @@
   import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
     doc, getDoc, collection, addDoc, query, where, onSnapshot,
-    deleteDoc, serverTimestamp, orderBy
+    deleteDoc, serverTimestamp
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   let currentUser = null;
@@ -184,10 +184,11 @@
   });
 
   function listenForConcerns(uid){
+    // Sorting is done in JS (below) instead of via orderBy() in the query,
+    // so this doesn't require setting up a Firestore composite index.
     const q = query(
       collection(db, "concerns"),
-      where("studentUid", "==", uid),
-      orderBy("submittedAt", "desc")
+      where("studentUid", "==", uid)
     );
 
     onSnapshot(q, (snapshot) => {
@@ -199,7 +200,13 @@
         return;
       }
 
-      snapshot.forEach((docSnap) => {
+      const docs = snapshot.docs.slice().sort((a, b) => {
+        const aTime = a.data().submittedAt && a.data().submittedAt.toDate ? a.data().submittedAt.toDate() : new Date(0);
+        const bTime = b.data().submittedAt && b.data().submittedAt.toDate ? b.data().submittedAt.toDate() : new Date(0);
+        return bTime - aTime;
+      });
+
+      docs.forEach((docSnap) => {
         const concern = docSnap.data();
         const id = docSnap.id;
 
@@ -234,6 +241,10 @@
           await deleteDoc(doc(db, "concerns", btn.getAttribute("data-id")));
         });
       });
+    }, (err) => {
+      console.error("Concern listener error:", err);
+      document.getElementById("concernList").innerHTML =
+        "<p style='color:#B3261E;'>Couldn't load your concerns. Please refresh the page.</p>";
     });
   }
 </script>
