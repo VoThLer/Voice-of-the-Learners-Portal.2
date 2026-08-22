@@ -17,9 +17,14 @@
               padding:10px 16px;border-radius:10px;font-weight:bold;cursor:pointer;flex-shrink:0;}
   .logout-btn:hover{background:rgba(255,255,255,.25);}
   .summary{display:flex;gap:12px;}
-  .summary .card{flex:1;text-align:center;padding:14px;}
+  .summary .card{flex:1;text-align:center;padding:14px;cursor:pointer;border:2px solid transparent;transition:border-color .15s;}
+  .summary .card.active{border-color:var(--maroon);}
+  .summary .card:hover{background:#FAF6F5;}
   .summary .num{font-size:26px;font-weight:bold;color:var(--maroon);}
   .summary .lbl{font-size:12px;color:#777;margin-top:2px;}
+  .filter-row{display:flex;justify-content:flex-end;margin-bottom:12px;}
+  .filter-clear{font-size:12px;color:var(--maroon);background:none;border:none;cursor:pointer;
+                 text-decoration:underline;padding:0;}
   .card{background:white;padding:18px;border-radius:18px;box-shadow:0 6px 15px rgba(0,0,0,.08);}
   .card h3{color:var(--maroon);margin:0 0 12px;}
   .tabs{display:flex;background:#F5E8EA;border-radius:14px;padding:4px;}
@@ -73,9 +78,15 @@
   </div>
 
   <div class="summary">
-    <div class="card"><div class="num" id="countPending">0</div><div class="lbl">Pending</div></div>
-    <div class="card"><div class="num" id="countOngoing">0</div><div class="lbl">Ongoing</div></div>
-    <div class="card"><div class="num" id="countResolved">0</div><div class="lbl">Issue Resolved</div></div>
+    <div class="card" id="filterPending" onclick="setFilter('Pending')">
+      <div class="num" id="countPending">0</div><div class="lbl">Pending</div>
+    </div>
+    <div class="card" id="filterOngoing" onclick="setFilter('Ongoing')">
+      <div class="num" id="countOngoing">0</div><div class="lbl">Ongoing</div>
+    </div>
+    <div class="card" id="filterResolved" onclick="setFilter('Resolved')">
+      <div class="num" id="countResolved">0</div><div class="lbl">Issue Resolved</div>
+    </div>
   </div>
 
   <div class="card">
@@ -88,6 +99,9 @@
   <div id="concernsTab" class="tab-panel active">
     <div class="card">
       <h3>📋 Submitted Concerns</h3>
+      <div class="filter-row">
+        <button class="filter-clear" id="clearFilterBtn" onclick="setFilter('All')" style="display:none;">Show all &times;</button>
+      </div>
       <div id="concernList"><p class="empty">Loading...</p></div>
     </div>
   </div>
@@ -169,25 +183,54 @@
   };
 
   // ---------- CONCERNS ----------
+  let allConcerns = [];
+  let currentFilter = "All";
+
+  window.setFilter = function(status){
+    currentFilter = (currentFilter === status) ? "All" : status;
+    renderConcerns();
+  };
+
+  function updateFilterUI(){
+    document.getElementById("filterPending").classList.toggle("active", currentFilter === "Pending");
+    document.getElementById("filterOngoing").classList.toggle("active", currentFilter === "Ongoing");
+    document.getElementById("filterResolved").classList.toggle("active", currentFilter === "Resolved");
+    document.getElementById("clearFilterBtn").style.display = currentFilter === "All" ? "none" : "inline";
+  }
+
   function listenForConcerns(){
     const q = query(collection(db, "concerns"), orderBy("submittedAt", "desc"));
 
     onSnapshot(q, (snapshot) => {
-      const list = document.getElementById("concernList");
-      list.innerHTML = "";
+      allConcerns = snapshot.docs;
 
       const counts = { Pending:0, Ongoing:0, Resolved:0 };
-      snapshot.forEach(d => { const s = d.data().status; counts[s] = (counts[s]||0) + 1; });
+      allConcerns.forEach(d => { const s = d.data().status; counts[s] = (counts[s]||0) + 1; });
       document.getElementById("countPending").textContent = counts.Pending || 0;
       document.getElementById("countOngoing").textContent = counts.Ongoing || 0;
       document.getElementById("countResolved").textContent = counts.Resolved || 0;
 
-      if(snapshot.empty){
-        list.innerHTML = '<p class="empty">No concerns submitted yet.</p>';
-        return;
-      }
+      renderConcerns();
+    });
+  }
 
-      snapshot.forEach((docSnap) => {
+  function renderConcerns(){
+    updateFilterUI();
+    const list = document.getElementById("concernList");
+    list.innerHTML = "";
+
+    const visible = currentFilter === "All"
+      ? allConcerns
+      : allConcerns.filter(d => d.data().status === currentFilter);
+
+    if(visible.length === 0){
+      list.innerHTML = currentFilter === "All"
+        ? '<p class="empty">No concerns submitted yet.</p>'
+        : `<p class="empty">No ${currentFilter.toLowerCase()} concerns.</p>`;
+      return;
+    }
+
+    visible.forEach((docSnap) => {
         const data = docSnap.data();
         const id = docSnap.id;
         const statusClass = data.status === "Ongoing" ? "ongoing" : data.status === "Resolved" ? "resolved" : "pending";
@@ -258,7 +301,6 @@
           await deleteDoc(doc(db, "concerns", btn.getAttribute("data-id")));
         });
       });
-    });
   }
 
   // ---------- STUDENT MANAGEMENT ----------
