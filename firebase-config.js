@@ -16,12 +16,10 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Fake internal email domain so students log in with just a Student ID,
-// while Firebase Auth still works the normal email/password way under the hood.
+// Fake internal email domain — used ONLY for student accounts, so students
+// log in with just a Student ID while Firebase Auth still works the normal
+// email/password way under the hood. Admin now uses a real email directly.
 export const EMAIL_DOMAIN = "@vol.app";
 export function studentIdToEmail(studentId){
   return studentId.trim().toLowerCase() + EMAIL_DOMAIN;
-}
-export function usernameToEmail(username){
-  return username.trim().toLowerCase() + EMAIL_DOMAIN;
 }
