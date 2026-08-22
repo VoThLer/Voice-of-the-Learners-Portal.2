@@ -55,21 +55,25 @@
     </div>
 
     <div id="adminForm" style="display:none;">
-      <label for="adminUser">Username</label>
-      <input id="adminUser" type="text" placeholder="Enter username">
+      <label for="adminEmail">Admin Email</label>
+      <input id="adminEmail" type="email" placeholder="Enter your email">
       <label for="adminPass">Password</label>
       <input id="adminPass" type="password" placeholder="Enter password">
+      <p id="forgotLink" style="text-align:right;font-size:12px;margin-top:8px;">
+        <a href="#" onclick="handleForgotPassword();return false;" style="color:var(--maroon);">Forgot password?</a>
+      </p>
     </div>
 
     <button class="login-btn" id="loginBtn" onclick="handleLogin()">LOG IN</button>
     <div class="error-msg" id="errorMsg"></div>
+    <div class="success-msg" id="successMsg" style="color:#146B34;font-size:13px;margin-top:10px;display:none;"></div>
     <p class="copyright">Voice of the Learners &copy; 2026</p>
   </div>
 </div>
 
 <script type="module">
-  import { auth, db, studentIdToEmail, usernameToEmail } from "./firebase-config.js";
-  import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { auth, db, studentIdToEmail } from "./firebase-config.js";
+  import { signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   let role = "student";
@@ -81,12 +85,38 @@
     document.getElementById("studentBtn").classList.toggle("active", r==="student");
     document.getElementById("adminBtn").classList.toggle("active", r==="admin");
     document.getElementById("errorMsg").style.display = "none";
+    document.getElementById("successMsg").style.display = "none";
+  };
+
+  window.handleForgotPassword = async function(){
+    const errorMsg = document.getElementById("errorMsg");
+    const successMsg = document.getElementById("successMsg");
+    errorMsg.style.display = "none";
+    successMsg.style.display = "none";
+
+    const email = document.getElementById("adminEmail").value.trim();
+    if(!email){
+      errorMsg.textContent = "Enter your email above first, then click 'Forgot password?'";
+      errorMsg.style.display = "block";
+      return;
+    }
+
+    try{
+      await sendPasswordResetEmail(auth, email);
+      successMsg.textContent = "Password reset email sent. Check your inbox.";
+      successMsg.style.display = "block";
+    }catch(err){
+      errorMsg.textContent = "Couldn't send reset email. Check the address is correct.";
+      errorMsg.style.display = "block";
+    }
   };
 
   window.handleLogin = async function(){
     const errorMsg = document.getElementById("errorMsg");
+    const successMsg = document.getElementById("successMsg");
     const loginBtn = document.getElementById("loginBtn");
     errorMsg.style.display = "none";
+    successMsg.style.display = "none";
 
     let email, password;
     if(role === "student"){
@@ -99,14 +129,13 @@
       }
       email = studentIdToEmail(studentId);
     }else{
-      const username = document.getElementById("adminUser").value.trim();
+      email = document.getElementById("adminEmail").value.trim();
       password = document.getElementById("adminPass").value;
-      if(!username || !password){
-        errorMsg.textContent = "Please enter a username and password.";
+      if(!email || !password){
+        errorMsg.textContent = "Please enter your email and password.";
         errorMsg.style.display = "block";
         return;
       }
-      email = usernameToEmail(username);
     }
 
     loginBtn.disabled = true;
