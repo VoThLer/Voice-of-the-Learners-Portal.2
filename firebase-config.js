@@ -1,14 +1,10 @@
-// ============================================================
-// PASTE YOUR OWN CONFIG FROM THE FIREBASE CONSOLE HERE.
-// (Project settings > General > Your apps > Web app > Config)
-// ============================================================
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDRXRs5f0HePIKndAHDHmWOEYGludoJwik",
+  authDomain: "voice-of-the-learners.firebaseapp.com",
+  projectId: "voice-of-the-learners",
+  storageBucket: "voice-of-the-learners.firebasestorage.app",
+  messagingSenderId: "731904931029",
+  appId: "1:731904931029:web:ff635fe15c42e2f09a1e5c"
 };
 export { firebaseConfig };
 
