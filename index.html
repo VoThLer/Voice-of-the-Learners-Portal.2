@@ -13,9 +13,11 @@
                     box-shadow:0 10px 30px rgba(0,0,0,.1);}
   .portal-header{background:linear-gradient(180deg,var(--maroon),var(--maroon-light));
                   color:white;padding:30px 24px;text-align:center;}
-  .logo-circle{width:70px;height:70px;border-radius:50%;background:#F5E8EA;color:var(--maroon);
-               display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:bold;
-               margin:0 auto 14px;}
+  .logo-circle{width:76px;height:76px;border-radius:50%;background:#FFFFFF;
+               display:flex;align-items:center;justify-content:center;
+               margin:0 auto 20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+  .logo-circle img{width:100%;height:100%;object-fit:contain;}
+  .school-name{margin:0 0 4px;font-size:12px;letter-spacing:.5px;opacity:.9;text-transform:uppercase;}
   .portal-header h1{margin:0 0 6px;font-size:19px;letter-spacing:.5px;}
   .portal-header p{margin:0;font-size:13px;opacity:.9;}
   .portal-body{padding:24px;}
@@ -37,7 +39,8 @@
 <body>
 <div class="login-container">
   <div class="portal-header">
-    <div class="logo-circle">VL</div>
+    <div class="logo-circle"><img src="school-logo.png" alt="Sta. Lucia National High School logo"></div>
+    <p class="school-name">Sta. Lucia National High School</p>
     <h1>VOICE OF THE LEARNERS</h1>
     <p>Student Concern Management Portal</p>
   </div>
